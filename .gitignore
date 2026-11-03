@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+web/dist/
+data/dataset.json
+
+# Reference checkouts; never add these as code or as gitlinks.
+fish-cast/
+hackgt-26/

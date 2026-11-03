@@ -101,7 +101,7 @@ export default function App() {
               {loading ? "Loading…" : "Turn on sample data"}
             </button>
             <p className="hint">
-              Or drop a dataset at <code>fishcast-console/data/dataset.json</code> and restart the server.
+              Or drop a dataset at <code>data/dataset.json</code> and restart the server.
             </p>
           </div>
         </main>

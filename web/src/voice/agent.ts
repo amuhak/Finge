@@ -287,7 +287,7 @@ class FishAgent {
     try {
       const cfg = await fetchConfig();
       const grok = cfg.voice_providers.grok;
-      if (!grok.available) throw new Error("No xAI key: put XAI_API_KEY=... in fishcast-console/.env and restart the server.");
+      if (!grok.available) throw new Error("No xAI key: put XAI_API_KEY=... in .env and restart the server.");
       const { value: token } = await fetchVoiceToken();
 
       const ctx = new AudioContext();

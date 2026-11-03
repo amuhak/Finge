@@ -27,7 +27,7 @@ try:  # python server/app.py
 except ImportError:  # python -m server.app
     from server.sample_data import build_dataset
 
-ROOT = Path(__file__).resolve().parent.parent  # fishcast-console/
+ROOT = Path(__file__).resolve().parent.parent  # repository root
 DIST = ROOT / "web" / "dist"
 REAL_PATH = ROOT / "data" / "dataset.json"
 XAI_SECRETS_URL = "https://api.x.ai/v1/realtime/client_secrets"
@@ -37,7 +37,7 @@ SAMPLE_ENV = "FISHCAST_SAMPLE"
 
 
 def load_env() -> None:
-    """Minimal KEY=VALUE reader for fishcast-console/.env (no python-dotenv)."""
+    """Minimal KEY=VALUE reader for ./.env (no python-dotenv)."""
     env = ROOT / ".env"
     if not env.exists():
         return
@@ -120,7 +120,7 @@ def voice_token() -> dict:
     """Mint a short-lived xAI token. The key stays on this machine."""
     key = xai_key()
     if not key:
-        raise HTTPException(400, "No xAI key: put XAI_API_KEY=... in fishcast-console/.env")
+        raise HTTPException(400, "No xAI key: put XAI_API_KEY=... in .env at the repo root")
     try:
         return post_json(
             XAI_SECRETS_URL,

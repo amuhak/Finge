@@ -65,7 +65,7 @@ export function VoicePanel() {
 
       {error && status === "error" && (
         <p className="voice-hint">
-          Check <code>fishcast-console/.env</code> for <code>XAI_API_KEY</code>, then restart the server.
+          Check <code>.env</code> for <code>XAI_API_KEY</code>, then restart the server.
         </p>
       )}
 
