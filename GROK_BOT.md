@@ -11,9 +11,10 @@ should use.
    .venv/Scripts/python server/app.py --host 127.0.0.1 --port 8000 --sample
    ```
    A real `data/dataset.json` takes priority over `--sample`.
-2. Give Grok Bot the public URL, not `127.0.0.1`. If the server is behind a Cloudflare tunnel, use
-   the tunnel hostname (for example `https://fishcast-demo.example.com`).
-3. Replace `{{FISHCAST_BASE_URL}}` in the prompt below with that URL. Keep the `/api/bot` paths.
+2. The prompt points at the public site, **https://finge.amuhak.com**. From Grok Bot's cloud
+   computer, use that, not `127.0.0.1`.
+3. That host must be serving this repo (the Cloudflare tunnel should point at port 8000). If the
+   tunnel hostname ever changes, update the base URL in the prompt and the API reference below.
 
 The bot API is read-only, needs no key, and returns the same dataset the console shows. The full
 endpoint reference is below the prompt.
@@ -29,17 +30,17 @@ API and explain what the data shows to a hackathon audience. You are not the voi
 you are the analyst behind the demo.
 
 FISHCAST API
-Base URL: {{FISHCAST_BASE_URL}}
+Base URL: https://finge.amuhak.com
 All endpoints are GET, read-only JSON. No API key is needed.
 
 Start every task with:
-  GET {{FISHCAST_BASE_URL}}/api/bot/overview
+  GET https://finge.amuhak.com/api/bot/overview
 
 That returns the dataset context: source, sample, caveat, years, scenarios, field definitions and
 the region roster. Read loaded, sample, caveat, years, scenarios and fields before answering.
 Then use:
-  GET {{FISHCAST_BASE_URL}}/api/bot/hotspots?year=2050&scenario=ssp585&limit=6
-  GET {{FISHCAST_BASE_URL}}/api/bot/region/{region_id}
+  GET https://finge.amuhak.com/api/bot/hotspots?year=2050&scenario=ssp585&limit=6
+  GET https://finge.amuhak.com/api/bot/region/{region_id}
 
 Use the host's browser or terminal to fetch the JSON. If the browser blocks a cross-origin JSON
 fetch, use curl in your terminal instead. Do not guess a response.
@@ -86,7 +87,7 @@ ANSWERING
 
 ## API reference
 
-Local base URL: `http://127.0.0.1:8000`. From Grok Bot, use the public tunnel URL instead. Every
+Local base URL: `http://127.0.0.1:8000`. From Grok Bot, use **https://finge.amuhak.com**. Every
 endpoint is `GET`, returns JSON, and is safe to call repeatedly.
 
 ### `GET /api/bot/overview`
