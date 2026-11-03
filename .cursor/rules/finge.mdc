@@ -1,0 +1,10 @@
+---
+description: Preserve Finge as an evidence-based companion to FishCast
+alwaysApply: true
+---
+Keep FishCast models and training upstream. Finge reads exported artifacts only.
+Compute statistics in Python, never in the language model. Distinguish climate and nowcast tracks.
+Keep synthetic examples labeled, preserve artifact fingerprints, and reject non-finite metrics.
+Do not invent confidence intervals or treat validation scores as held-out test results.
+Keep XAI_API_KEY server-side. Add meaningful adapter regression tests when changing data contracts.
+Run python -m unittest discover -s tests -v and node --check web/app.js.

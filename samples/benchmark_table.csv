@@ -1,0 +1,7 @@
+model,track,test_rmse,skill_vs_constant,skill_ci_low,skill_ci_high,roc_auc,pr_auc,dataset_kind
+Constant (train mean),baseline,1.2,0,0,0,,,synthetic
+Sector climatology,climate,1.188,0.01,-0.025,0.042,0.57,0.16,synthetic
+GP climate_conditioned_gp,climate,1.212,-0.01,-0.055,0.024,0.51,0.13,synthetic
+CatBoost climate only,climate,1.176,0.02,-0.012,0.049,0.61,0.19,synthetic
+GP autoregressive_gp,nowcast,1.14,0.05,0.009,0.083,0.69,0.25,synthetic
+GP latent_state_augmented_gp,nowcast,1.128,0.06,0.014,0.099,0.72,0.28,synthetic
