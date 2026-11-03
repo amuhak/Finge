@@ -17,6 +17,10 @@
   --green: #2f9e74;
   --amber-soft: #fff4d6;
   --amber-ink: #7a5600;
+  --hot-0: #d7eef5;
+  --hot-1: #9fd8d1;
+  --hot-2: #ffd166;
+  --hot-3: #ff8c69;
   --radius: 18px;
   --font: "Nunito", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
@@ -163,7 +167,7 @@ button:focus-visible {
 .btn.voice {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
 }
 
 .btn.voice.on {
@@ -1032,6 +1036,20 @@ button:focus-visible {
   flex: none;
 }
 
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--brand-soft);
+  transform: translateY(-1px);
+}
+
 /* ---------- timeline ---------- */
 .timeline {
   display: flex;
@@ -1067,7 +1085,7 @@ button:focus-visible {
 
 .year.on {
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
 }
 
 .scenarios {
@@ -1198,7 +1216,7 @@ button:focus-visible {
 .line.you {
   align-self: flex-end;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
   border-bottom-right-radius: 4px;
 }
 
@@ -1309,7 +1327,7 @@ button:focus-visible {
 }
 
 /* ---------- globe extras ---------- */
-.map-tools button.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.map-tools button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
 .map-hint { position: absolute; right: 14px; bottom: 6px; margin: 0; font-size: 0.8rem; font-weight: 700; color: var(--muted); pointer-events: none; }
 .btn.world { margin: 6px 0 4px; background: #def3ea; border-color: #bfe5d4; color: #1d6b4e; }
 .warnings { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 6px; }
@@ -1353,3 +1371,144 @@ button:focus-visible {
 .links small { color: var(--dim); font-weight: 700; }
 .link-body { display: block; color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
 @media (max-width: 640px) { .modal-grid { grid-template-columns: 1fr; } .mini-globe { max-width: 260px; margin: 0 auto; } }
+
+/* ---------- dark theme ---------- */
+:root[data-theme="dark"] {
+  --bg: #0a1823;
+  --panel: #102431;
+  --sea: #0d2534;
+  --sea-edge: #24506a;
+  --land: #c2cfca;
+  --ice: #ffffff;
+  --line: #22404f;
+  --ink: #e9f3f8;
+  --muted: #a8bfcc;
+  --dim: #7893a2;
+  --brand: #5cc0ea;
+  --brand-ink: #04141d;
+  --brand-soft: #16394a;
+  --coral: #ff8972;
+  --green: #5fd3a3;
+  --amber-soft: #352b17;
+  --amber-ink: #ffda8f;
+  --hot-0: #1d4659;
+  --hot-1: #2b7372;
+  --hot-2: #b0871f;
+  --hot-3: #d06047;
+  color-scheme: dark;
+}
+
+/* Map surfaces: the dark sea is deeper than the panel, and labels keep dark halos. */
+[data-theme="dark"] .sea {
+  fill: #0d2534;
+}
+
+[data-theme="dark"] .graticule {
+  stroke: rgba(233, 243, 248, 0.14);
+}
+
+[data-theme="dark"] .land {
+  stroke: #7d938f;
+}
+
+[data-theme="dark"] .area-edge {
+  stroke: #07131c;
+}
+
+[data-theme="dark"] .unsure-line {
+  stroke: #e9f3f8;
+}
+
+[data-theme="dark"] .label-pill {
+  fill: #07131c;
+  stroke: rgba(233, 243, 248, 0.28);
+}
+
+[data-theme="dark"] .label.strong .label-pill {
+  fill: #e9f3f8;
+}
+
+[data-theme="dark"] .label.strong .label-val {
+  fill: #07131c;
+}
+
+[data-theme="dark"] .label-name,
+[data-theme="dark"] .label-mpa {
+  stroke: #07131c;
+}
+
+[data-theme="dark"] .legend-step i {
+  border-color: rgba(233, 243, 248, 0.16);
+}
+
+[data-theme="dark"] .legend-step i.hatch {
+  background: repeating-linear-gradient(45deg, #0d2534 0 3px, #3f5a68 3px 5px);
+}
+
+/* Charts and small hardcoded surfaces that are not tokens. */
+[data-theme="dark"] .chart-band {
+  fill: #4a2f2a;
+}
+
+[data-theme="dark"] .key.band {
+  background: #4a2f2a;
+}
+
+[data-theme="dark"] .chart-dot {
+  fill: #102431;
+}
+
+[data-theme="dark"] .chart-bubble {
+  fill: #e9f3f8;
+}
+
+[data-theme="dark"] .chart-bubble-text {
+  fill: #07131c;
+}
+
+[data-theme="dark"] .arc-home {
+  stroke: #07131c;
+}
+
+[data-theme="dark"] .btn.primary:hover {
+  background: #78cbf0;
+}
+
+[data-theme="dark"] .dot {
+  background: #04141d;
+}
+
+[data-theme="dark"] .strip.error,
+[data-theme="dark"] .voice-hint,
+[data-theme="dark"] .warnings li.red {
+  background: #3a1f1a;
+  color: #ffb4a8;
+}
+
+[data-theme="dark"] .warnings li.green,
+[data-theme="dark"] .tag.mpa,
+[data-theme="dark"] .btn.world {
+  background: #123a2e;
+  border-color: #1f5b48;
+  color: #a6efce;
+}
+
+[data-theme="dark"] .voice-panel.error {
+  border-color: #a14736;
+}
+
+[data-theme="dark"] .vs.error {
+  color: #ffb4a8;
+}
+
+[data-theme="dark"] .chip.on {
+  background: #3b2430;
+}
+
+[data-theme="dark"] .voice-panel {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .modal-back {
+  background: rgba(0, 0, 0, 0.6);
+}

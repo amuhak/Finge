@@ -275,6 +275,7 @@ export function WorldMap() {
         {regions.map((region, k) => {
           const point = pointFor(region, year, scenario);
           const hotspot = point?.hotspot ?? 0;
+          const fill = hotspotColor(hotspot);
           const d = path(areas[k].fill) ?? "";
           if (!d) return null;
           return (
@@ -295,7 +296,7 @@ export function WorldMap() {
               <title>
                 {region.name} · hotspot {formatPct(hotspot)} · krill {formatPct(point?.density ?? 0)}
               </title>
-              <path d={d} fill={hotspotColor(hotspot)} stroke={hotspotColor(hotspot)} className="area-fill" />
+              <path d={d} style={{ fill, stroke: fill }} className="area-fill" />
               {(point?.uncertainty ?? 0) >= HIGH_UNCERTAINTY && <path d={d} className="area-unsure" />}
             </g>
           );

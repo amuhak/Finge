@@ -108,7 +108,7 @@ export function OceanTrend() {
             {yr}
           </text>
         ))}
-        <circle cx={x(years.at(-1)!)} cy={y(last)} r={6} fill={hotspotColor(last)} className="chart-mark-dot" />
+        <circle cx={x(years.at(-1)!)} cy={y(last)} r={6} style={{ fill: hotspotColor(last) }} className="chart-mark-dot" />
       </svg>
       <figcaption>
         <span className="key hot" /> high-emissions <span className="key dens" /> middle-road · average of all regions

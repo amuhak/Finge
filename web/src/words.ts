@@ -21,12 +21,12 @@ export function sureWord(uncertainty: number): string {
   return "Very unsure";
 }
 
-/** Four flat steps, light to strong — no gradient. */
+/** Four flat steps, light to strong — no gradient. Colours live in CSS so dark mode can remap them. */
 export const HOTSPOT_STEPS = [
-  { min: 0, color: "#d7eef5", label: "under 25%" },
-  { min: 0.25, color: "#9fd8d1", label: "25–45%" },
-  { min: 0.45, color: "#ffd166", label: "45–60%" },
-  { min: 0.6, color: "#ff8c69", label: "60%+" },
+  { min: 0, color: "var(--hot-0)", label: "under 25%" },
+  { min: 0.25, color: "var(--hot-1)", label: "25–45%" },
+  { min: 0.45, color: "var(--hot-2)", label: "45–60%" },
+  { min: 0.6, color: "var(--hot-3)", label: "60%+" },
 ];
 
 export function hotspotColor(hotspot: number): string {

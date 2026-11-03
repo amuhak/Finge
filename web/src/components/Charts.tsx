@@ -89,7 +89,7 @@ export function RegionChart({ region, marks }: { region: Region; marks: number[]
           const bx = Math.min(W - R - 30, Math.max(L + 30, cx));
           return (
             <g key={`m-${p.year}`} className="chart-mark">
-              <circle cx={cx} cy={cy} r={8} fill={hotspotColor(p.hotspot)} className="chart-mark-dot" />
+              <circle cx={cx} cy={cy} r={8} style={{ fill: hotspotColor(p.hotspot) }} className="chart-mark-dot" />
               <rect x={bx - 30} y={above ? cy - 40 : cy + 12} width={60} height={26} rx={13} className="chart-bubble" />
               <text x={bx} y={above ? cy - 22 : cy + 30} textAnchor="middle" className="chart-bubble-text">
                 {formatPct(p.hotspot)}

@@ -55,10 +55,17 @@ export default function App() {
   const voiceStatus = useStore((s) => s.voiceStatus);
   const focusOn = useStore((s) => s.focusOn);
   const select = useStore((s) => s.select);
+  const theme = useStore((s) => s.theme);
+  const setTheme = useStore((s) => s.setTheme);
 
   useEffect(() => {
     void load("auto");
   }, [load]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0a1823" : "#f3f8fb");
+  }, [theme]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -104,6 +111,15 @@ export default function App() {
           >
             <span className={`dot ${voiceStatus}`} aria-hidden="true" />
             {voiceOpen ? "End Pip" : "Ask Pip (mic)"}
+          </button>
+          <button
+            className="icon theme-toggle"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-pressed={theme === "dark"}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
           </button>
         </div>
       </header>

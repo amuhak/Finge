@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { fetchDataset } from "./api";
 import { DEFAULT_YEARS, EMPTY_DATASET, scenarioForYear, type Dataset, type ScenarioChoice } from "./types";
 
+export type Theme = "light" | "dark";
 export type VoiceStatus = "off" | "connecting" | "listening" | "thinking" | "speaking" | "error";
 export type VoiceKind = "user" | "agent" | "tool" | "sys";
 /** What Pip is pointing at: drives the chart card and the map pulse. */
@@ -18,6 +19,7 @@ type Store = {
   error: string | null;
   sampleRequested: boolean;
 
+  theme: Theme;
   year: number;
   scenario: ScenarioChoice;
   selected: string | null;
@@ -35,6 +37,7 @@ type Store = {
   voiceLog: VoiceLine[];
 
   load: (source: "auto" | "sample") => Promise<void>;
+  setTheme: (theme: Theme) => void;
   setYear: (year: number) => void;
   setScenario: (scenario: ScenarioChoice) => void;
   select: (id: string | null) => void;
@@ -45,9 +48,19 @@ type Store = {
 };
 
 const SCENARIO_KEY = "fishcast.scenario";
+const THEME_KEY = "fishcast.theme";
 
 function savedScenario(): ScenarioChoice {
   return localStorage.getItem(SCENARIO_KEY) === "ssp585" ? "ssp585" : "ssp245";
+}
+
+/** index.html sets the attribute before first paint; fall back for dev/test runs. */
+function initialTheme(): Theme {
+  const attr = document.documentElement.dataset.theme;
+  if (attr === "light" || attr === "dark") return attr;
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -56,6 +69,7 @@ export const useStore = create<Store>((set, get) => ({
   error: null,
   sampleRequested: false,
 
+  theme: initialTheme(),
   year: 2020,
   scenario: savedScenario(),
   selected: null,
@@ -91,6 +105,12 @@ export const useStore = create<Store>((set, get) => ({
         dataset: EMPTY_DATASET,
       });
     }
+  },
+
+  setTheme: (theme) => {
+    localStorage.setItem(THEME_KEY, theme);
+    document.documentElement.dataset.theme = theme;
+    set({ theme });
   },
 
   setYear: (year) => {
