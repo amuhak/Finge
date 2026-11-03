@@ -4,6 +4,12 @@ import { DEFAULT_YEARS, EMPTY_DATASET, scenarioForYear, type Dataset, type Scena
 
 export type VoiceStatus = "off" | "connecting" | "listening" | "thinking" | "speaking" | "error";
 export type VoiceKind = "user" | "agent" | "tool" | "sys";
+/** What Pip is pointing at: drives the chart card and the map pulse. */
+export type Highlight =
+  | { kind: "hotspots"; ids: string[]; year: number }
+  | { kind: "region"; id: string; years: number[] }
+  | { kind: "compare"; id: string; years: [number, number] };
+
 export type VoiceLine = { kind: VoiceKind; text: string; key?: string; at: number };
 
 type Store = {
@@ -17,6 +23,9 @@ type Store = {
   selected: string | null;
   /** null = whole world, otherwise a region id. */
   focus: string | null;
+
+  highlight: Highlight | null;
+  setHighlight: (highlight: Highlight | null) => void;
 
   voiceOpen: boolean;
   voiceStatus: VoiceStatus;
@@ -51,6 +60,9 @@ export const useStore = create<Store>((set, get) => ({
   scenario: savedScenario(),
   selected: null,
   focus: null,
+
+  highlight: null,
+  setHighlight: (highlight) => set({ highlight }),
 
   voiceOpen: false,
   voiceStatus: "off",
@@ -93,7 +105,7 @@ export const useStore = create<Store>((set, get) => ({
     set({ scenario });
   },
 
-  select: (selected) => set({ selected }),
+  select: (selected) => set({ selected, highlight: null }),
 
   focusOn: (focus) => set({ focus, selected: focus ?? get().selected }),
 

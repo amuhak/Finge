@@ -2,7 +2,7 @@
 // The backend mints a short-lived xAI token; audio goes browser <-> xAI directly.
 // Tools run here: data tools read the loaded dataset, UI tools drive the store.
 import { fetchConfig, fetchVoiceToken } from "../api";
-import { logVoice, useStore, type VoiceStatus } from "../store";
+import { logVoice, useStore, type Highlight, type VoiceStatus } from "../store";
 import { confidenceLabel, pointFor, type Region, type ScenarioChoice, type ScenarioId } from "../types";
 import { GrokTransport, type Handlers, type ToolCall, type ToolDef } from "./grok";
 
@@ -148,6 +148,14 @@ function brief(region: Region, year: number, scenario: ScenarioId) {
   };
 }
 
+/** Move the map to a region and pin a chart highlight on it. */
+function showRegion(id: string, highlight: Highlight) {
+  const state = useStore.getState();
+  state.select(id);
+  state.focusOn(id);
+  state.setHighlight(highlight);
+}
+
 async function runTool(name: string, a: Record<string, unknown>): Promise<unknown> {
   const state = useStore.getState();
   const dataset = state.dataset;
@@ -178,6 +186,7 @@ async function runTool(name: string, a: Record<string, unknown>): Promise<unknow
           uncertainty: point?.uncertainty ?? null,
           mpa: region.mpa,
         }));
+      state.setHighlight({ kind: "hotspots", ids: ranked.map((row) => row.id), year });
       return {
         year,
         scenario,
@@ -193,6 +202,7 @@ async function runTool(name: string, a: Record<string, unknown>): Promise<unknow
       if (!region) return { error: `No region "${a.region}". Known: ${regions().map((r) => r.name).join(", ")}` };
       const year = yearFrom(a, state.year);
       const scenario = chosenScenario(a, year);
+      showRegion(region.id, { kind: "region", id: region.id, years: [year] });
       if (name === "get_region") return { ...brief(region, year, scenario), sample: dataset.sample };
       return {
         ...brief(region, year, scenario),
@@ -218,6 +228,7 @@ async function runTool(name: string, a: Record<string, unknown>): Promise<unknow
       const pa = pointFor(region, fromYear, chosenScenario(a, fromYear) as ScenarioChoice);
       const pb = pointFor(region, toYear, chosenScenario(a, toYear) as ScenarioChoice);
       if (!pa || !pb) return { error: "No data for those years." };
+      showRegion(region.id, { kind: "compare", id: region.id, years: [fromYear, toYear] });
       const pct = (x: number, y: number) => (x === 0 ? null : Math.round(((y - x) / x) * 1000) / 10);
       return {
         region: region.name,

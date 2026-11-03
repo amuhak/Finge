@@ -5,21 +5,44 @@ import { VoicePanel } from "./components/VoicePanel";
 import { WorldMap } from "./components/WorldMap";
 import { useStore } from "./store";
 import { agent } from "./voice/agent";
+import { PipFish } from "./components/Pip";
+import { HOTSPOT_STEPS } from "./words";
 
 function Legend() {
   return (
-    <div className="legend">
-      <span>
-        <i className="swatch heat" /> hotspot probability
+    <div className="legend" aria-label="Map key">
+      <span className="legend-title">Hotspot chance</span>
+      {HOTSPOT_STEPS.map((step) => (
+        <span key={step.min} className="legend-step">
+          <i style={{ background: step.color }} /> {step.label}
+        </span>
+      ))}
+      <span className="legend-step">
+        <i className="hatch" /> very unsure
       </span>
-      <span>
-        <i className="swatch ring" /> MPA
+      <span className="legend-step">
+        <i className="mpa" /> protected
       </span>
-      <span>
-        <i className="swatch dashed" /> high uncertainty
-      </span>
-      <span className="legend-note">size = krill density</span>
     </div>
+  );
+}
+
+/** Pip waving from the corner of the map; shows the last thing Pip said. */
+function PipBuddy() {
+  const voiceOpen = useStore((s) => s.voiceOpen);
+  const status = useStore((s) => s.voiceStatus);
+  const log = useStore((s) => s.voiceLog);
+  const last = [...log].reverse().find((line) => line.kind === "agent")?.text;
+  const say = voiceOpen ? (last ?? "Listening…") : "Hi! I'm Pip. Tap me to ask about krill.";
+  return (
+    <button
+      className={`buddy ${voiceOpen ? "live" : ""}`}
+      onClick={() => (voiceOpen ? undefined : void agent.start())}
+      aria-label={voiceOpen ? "Pip is on" : "Start talking to Pip"}
+    >
+      <span className="buddy-say">{say.length > 140 ? `${say.slice(0, 140)}…` : say}</span>
+      <PipFish size={92} mood={voiceOpen ? status : "idle"} />
+    </button>
   );
 }
 
@@ -54,10 +77,10 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="brand">
-          <span className="mark">◈</span>
+          <PipFish size={54} />
           <div>
             <h1>FishCast</h1>
-            <p>Antarctic krill · Southern Ocean · ask Pip</p>
+            <p>Krill around Antarctica, explained by Pip the icefish</p>
           </div>
         </div>
         <div className="top-actions">
@@ -70,7 +93,7 @@ export default function App() {
                 focusOn(null);
               }}
             >
-              World
+              Whole ocean
             </button>
           )}
           <button
@@ -79,7 +102,7 @@ export default function App() {
             title={voiceOpen ? "End the voice session" : "Starts Pip and asks for microphone access"}
             aria-pressed={voiceOpen}
           >
-            <span className={`dot ${voiceStatus}`} />
+            <span className={`dot ${voiceStatus}`} aria-hidden="true" />
             {voiceOpen ? "End Pip" : "Ask Pip (mic)"}
           </button>
         </div>
@@ -123,6 +146,7 @@ export default function App() {
             <div className="map-wrap">
               <WorldMap />
               <Legend />
+              <PipBuddy />
             </div>
             <aside className="side">
               <RegionPanel />

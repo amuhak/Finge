@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useStore } from "../store";
+import { PipFish } from "./Pip";
 import { agent, levels, statusLabel } from "../voice/agent";
 
 const KIND_CLASS: Record<string, string> = {
@@ -40,31 +41,17 @@ export function VoicePanel() {
   return (
     <section className={`voice-panel ${status}`} aria-label="Pip voice console">
       <header className="voice-top">
+        <PipFish size={78} talk={status === "speaking" ? level * 1.6 : 0} mood={status} />
         <div className="voice-title">
           <strong>Pip</strong>
-          <span>mackerel icefish · Grok Voice</span>
+          <span className={`vs ${status}`} role="status" aria-live="polite" aria-atomic="true">
+            {error ?? statusLabel(status)}
+          </span>
         </div>
-        <span className={`dot ${status}`} title={statusLabel(status)} />
         <button className="icon" onClick={() => agent.stop()} title="End voice session" aria-label="End voice session">
           ✕
         </button>
       </header>
-
-      <div className="voice-state">
-        <span className={`vs ${status}`} role="status" aria-live="polite" aria-atomic="true">
-          {error ?? statusLabel(status)}
-        </span>
-        <div className="meter" aria-hidden="true">
-          {Array.from({ length: 18 }).map((_, index) => (
-            <span
-              key={index}
-              style={{
-                height: `${Math.max(3, level * 30 * (0.35 + 0.65 * Math.abs(Math.sin(index * 0.8 + level * 3))))}px`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
 
       {error && status === "error" && (
         <p className="voice-hint">
@@ -75,11 +62,10 @@ export function VoicePanel() {
       {micError && status !== "error" && <p className="voice-hint warn">{micError}</p>}
 
       <div className="voice-log" ref={list}>
-        {log.length === 0 && <p className="voice-empty">Say "where are the krill?" or type below.</p>}
+        {log.length === 0 && <p className="voice-empty">Hi! I'm Pip. Ask me "where are the krill?" out loud, or type below.</p>}
         {log.map((line, index) => (
           <div key={line.key ?? `${line.at}-${index}`} className={`line ${KIND_CLASS[line.kind] ?? "sys"}`}>
-            <span className="who">{line.kind === "agent" ? "Pip" : line.kind === "user" ? "You" : "·"}</span>
-            <span className="what">{line.text}</span>
+                        <span className="what">{line.text}</span>
           </div>
         ))}
       </div>

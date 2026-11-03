@@ -1,60 +1,58 @@
 import { agent } from "../voice/agent";
 import { useStore } from "../store";
-import { HIGH_UNCERTAINTY, confidenceLabel, formatPct, pointFor, seriesFor, type Region } from "../types";
+import { formatPct, pointFor, type Region } from "../types";
+import { chanceWord, hotspotColor, krillWord, scenarioName, sureWord } from "../words";
+import { HotspotBars, RegionChart } from "./Charts";
+import { PipFish } from "./Pip";
 
-function Spark({ region }: { region: Region }) {
-  const year = useStore((s) => s.year);
-  const scenario = useStore((s) => s.scenario);
-  const points = seriesFor(region, scenario).slice().sort((a, b) => a.year - b.year);
-  const minYear = points[0]?.year ?? 1990;
-  const maxYear = points.at(-1)?.year ?? 2050;
-  const w = 264;
-  const h = 62;
-  const pad = 5;
-  const x = (value: number) => pad + ((value - minYear) / Math.max(1, maxYear - minYear)) * (w - 2 * pad);
-  const y = (value: number) => h - pad - value * (h - 2 * pad);
-  const line = points.map((p, index) => `${index ? "L" : "M"}${x(p.year).toFixed(1)},${y(p.density).toFixed(1)}`).join(" ");
-  const current = pointFor(region, year, scenario);
-
+function Tile({ label, value, word, tone }: { label: string; value: string; word: string; tone?: string }) {
   return (
-    <svg className="spark" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Krill density trend for ${region.name}`}>
-      <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} className="spark-axis" />
-      <path d={line} className="spark-line" />
-      {current && (
-        <>
-          <circle cx={x(current.year)} cy={y(current.density)} r={3} className="spark-dot" />
-          <text
-            x={x(current.year) + (x(current.year) > w - 44 ? -6 : 6)}
-            y={Math.max(10, y(current.density) - 4)}
-            textAnchor={x(current.year) > w - 44 ? "end" : "start"}
-            className="spark-value"
-          >
-            {formatPct(current.density)}
-          </text>
-        </>
-      )}
-      <text x={pad} y={h - 14} className="spark-text">
-        {minYear}
-      </text>
-      <text x={w - pad} y={h - 14} textAnchor="end" className="spark-text">
-        {maxYear}
-      </text>
-    </svg>
+    <div className="tile">
+      <span className="tile-label">{label}</span>
+      <strong className="tile-value" style={tone ? { color: tone } : undefined}>
+        {value}
+      </strong>
+      <span className="tile-word">{word}</span>
+    </div>
   );
 }
 
-function Metric({ label, value, detail }: { label: string; value: number; detail: string }) {
+/** What Pip is pointing at right now, if anything. */
+function PipShowing() {
+  const highlight = useStore((s) => s.highlight);
+  const regions = useStore((s) => s.dataset.regions);
+  const setHighlight = useStore((s) => s.setHighlight);
+  if (!highlight) return null;
+
+  let title = "";
+  let body = null;
+  if (highlight.kind === "hotspots") {
+    title = `Top krill hotspots in ${highlight.year}`;
+    body = <HotspotBars ids={highlight.ids} year={highlight.year} />;
+  } else {
+    const region = regions.find((r) => r.id === highlight.id);
+    if (!region) return null;
+    title =
+      highlight.kind === "compare"
+        ? `${region.name}: ${highlight.years[0]} vs ${highlight.years[1]}`
+        : `${region.name} in ${highlight.years[0]}`;
+    body = <RegionChart region={region} marks={highlight.years} />;
+  }
+
   return (
-    <div className="metric">
-      <div className="metric-head">
-        <span>{label}</span>
-        <strong>{formatPct(value)}</strong>
-      </div>
-      <div className="bar">
-        <span style={{ width: `${Math.round(value * 100)}%` }} />
-      </div>
-      <div className="metric-detail">{detail}</div>
-    </div>
+    <section className="showing" aria-live="polite">
+      <header>
+        <PipFish size={44} mood="speaking" />
+        <div>
+          <span className="eyebrow">Pip is showing you</span>
+          <h3>{title}</h3>
+        </div>
+        <button className="icon" onClick={() => setHighlight(null)} aria-label="Hide Pip's chart">
+          ✕
+        </button>
+      </header>
+      {body}
+    </section>
   );
 }
 
@@ -62,6 +60,7 @@ function Overview() {
   const regions = useStore((s) => s.dataset.regions);
   const year = useStore((s) => s.year);
   const scenario = useStore((s) => s.scenario);
+  const highlight = useStore((s) => s.highlight);
   const caveat = useStore((s) => s.dataset.meta?.caveat);
   const sample = useStore((s) => s.dataset.sample);
   const select = useStore((s) => s.select);
@@ -74,47 +73,97 @@ function Overview() {
 
   return (
     <div className="panel-body">
-      <h2>The Southern Ocean</h2>
+      <PipShowing />
+      <h2>Where are the krill?</h2>
       <p className="lede">
-        Click a region to inspect it, or ask Pip out loud. Every mark is a modelled krill hotspot, not a count.
+        Each coloured patch of sea is one region. The number is the chance it's a krill hotspot in <b>{year}</b>. Tap a
+        patch for its story, or drag and scroll the map to explore.
       </p>
-      <div className="section-label">Top hotspots · {year}</div>
-      <ol className="hotlist">
-        {top.map(({ region, point }, index) => (
-          <li key={region.id}>
-            <button
-              className="hotrow"
-              onClick={() => {
-                select(region.id);
-                focusOn(region.id);
-              }}
-            >
-              <span className="ranknum">{index + 1}</span>
-              <span className="hotname">{region.name}</span>
-              <span
-                className={`hotunc ${point && point.uncertainty >= HIGH_UNCERTAINTY ? "high" : ""}`}
-                title="Model uncertainty — higher is wider"
-              >
-                unc {formatPct(point?.uncertainty ?? 0)}
-              </span>
-              <span className="hotval">{formatPct(point?.hotspot ?? 0)}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      {caveat && (
-        <div className={`caveat ${sample ? "sample" : ""}`}>
-          <strong>{sample ? "Sample data" : "Data note"}</strong>
-          <span>{caveat}</span>
-        </div>
+      {highlight?.kind !== "hotspots" && (
+        <>
+          <div className="section-label">Top 3 right now</div>
+          <ol className="toplist">
+            {top.map(({ region, point }, index) => (
+              <li key={region.id}>
+                <button
+                  onClick={() => {
+                    select(region.id);
+                    focusOn(region.id);
+                  }}
+                >
+                  <span className="rank" style={{ background: hotspotColor(point?.hotspot ?? 0) }}>
+                    {index + 1}
+                  </span>
+                  <span className="top-name">
+                    {region.name}
+                    <small>
+                      {chanceWord(point?.hotspot ?? 0)} · {sureWord(point?.uncertainty ?? 0).toLowerCase()}
+                    </small>
+                  </span>
+                  <span className="top-val">{formatPct(point?.hotspot ?? 0)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
+      <button className="btn primary wide" onClick={() => void agent.ask("Where are the krill hotspots right now?")}>
+        Ask Pip where the krill are
+      </button>
+      {caveat && (
+        <p className={`note ${sample ? "sample" : ""}`}>
+          <b>{sample ? "Sample data." : "Note."}</b> {caveat}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Detail({ region }: { region: Region }) {
+  const year = useStore((s) => s.year);
+  const scenario = useStore((s) => s.scenario);
+  const sample = useStore((s) => s.dataset.sample);
+  const highlight = useStore((s) => s.highlight);
+  const point = pointFor(region, year, scenario);
+  if (!point) return null;
+  const pipHere = highlight && highlight.kind !== "hotspots" && highlight.id === region.id;
+
+  return (
+    <div className="panel-body">
+      {pipHere && <PipShowing />}
+      <div className="region-head">
+        <h2>{region.name}</h2>
+        <span className={`tag ${region.mpa ? "mpa" : region.mpa_name ? "proposed" : "none"}`}>
+          {region.mpa ? "Protected area" : region.mpa_name ? "Proposed protection" : "Not protected"}
+        </span>
+      </div>
+      <p className="when">
+        {year} · {scenarioName(year, scenario)}
+      </p>
+
+      <div className="tiles">
+        <Tile label="Hotspot chance" value={formatPct(point.hotspot)} word={chanceWord(point.hotspot)} />
+        <Tile label="Krill" value={formatPct(point.density)} word={krillWord(point.density)} />
+        <Tile label="Model" value={`±${Math.round(point.uncertainty * 50)}`} word={sureWord(point.uncertainty)} />
+      </div>
+
+      {!pipHere && (
+        <>
+          <div className="section-label">Over time · tap a year</div>
+          <RegionChart region={region} marks={[]} />
+        </>
+      )}
+
+      <p className="lede">{region.summary}</p>
+      <p className="ecology">{region.ecology}</p>
+
       <button
         className="btn primary wide"
-        onClick={() => void agent.start()}
-        title="Starts Pip and asks for microphone access"
+        onClick={() => void agent.ask(`What does this mean for ${region.name} and the fish that live there?`)}
       >
-        Ask Pip what this means (mic)
+        Ask Pip about {region.name}
       </button>
+      {sample && <p className="note sample">Made-up demo numbers, not a forecast.</p>}
     </div>
   );
 }
@@ -122,60 +171,6 @@ function Overview() {
 export function RegionPanel() {
   const regions = useStore((s) => s.dataset.regions);
   const selected = useStore((s) => s.selected);
-  const year = useStore((s) => s.year);
-  const scenario = useStore((s) => s.scenario);
-  const sample = useStore((s) => s.dataset.sample);
   const region = regions.find((item) => item.id === selected);
-
-  if (!region) return <Overview />;
-
-  const point = pointFor(region, year, scenario);
-  if (!point) return <Overview />;
-
-  const mpaTag = region.mpa ? (
-    <span className="tag mpa">{region.mpa_name ?? "Marine protected area"}</span>
-  ) : region.mpa_name ? (
-    <span className="tag proposed">{region.mpa_name}</span>
-  ) : (
-    <span className="tag none">No MPA</span>
-  );
-
-  return (
-    <div className="panel-body">
-      <div className="region-head">
-        <h2>{region.name}</h2>
-        <span className="coords">
-          {Math.abs(region.lat).toFixed(1)}°S · {Math.abs(region.lon).toFixed(1)}°{region.lon < 0 ? "W" : "E"}
-        </span>
-      </div>
-      {mpaTag}
-
-      <div className="metrics">
-        <Metric label="Krill density" value={point.density} detail="relative index, not a count" />
-        <Metric label="Hotspot probability" value={point.hotspot} detail={`${year} · ${year > 2020 ? scenario : "historical"}`} />
-        <Metric
-          label="Model uncertainty"
-          value={point.uncertainty}
-          detail={`${confidenceLabel(point.uncertainty)} · ${point.n_hauls} historical hauls`}
-        />
-      </div>
-
-      <div className="section-label">Krill density, 1990 → 2050</div>
-      <Spark region={region} />
-
-      <p className="lede">{region.summary}</p>
-      <div className="ecology">{region.ecology}</div>
-
-      <button
-        className="btn primary wide"
-        onClick={() => void agent.ask(`What does this mean for ${region.name} and the fish that live there?`)}
-        title="Opens Pip and uses your microphone; the text box works without one"
-      >
-        What does this mean? (mic)
-      </button>
-      <p className="hint">Pip answers from the loaded data and says when it is guessing.</p>
-
-      {sample && <div className="caveat sample">Synthetic numbers for the demo, not a forecast.</div>}
-    </div>
-  );
+  return region ? <Detail region={region} /> : <Overview />;
 }
