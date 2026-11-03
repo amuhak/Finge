@@ -4,6 +4,20 @@ import { formatPct, pointFor, type Region } from "../types";
 import { chanceWord, hotspotColor, krillWord, scenarioName, sureWord } from "../words";
 import { HotspotBars, RegionChart } from "./Charts";
 import { PipFish } from "./Pip";
+import { useState } from "react";
+import { ChangeBars, OceanTrend, Warnings, WorldPopup } from "./Extras";
+
+function WorldButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="btn world wide" onClick={() => setOpen(true)}>
+        🌍 What does this mean for the rest of the world?
+      </button>
+      {open && <WorldPopup onClose={() => setOpen(false)} />}
+    </>
+  );
+}
 
 function Tile({ label, value, word, tone }: { label: string; value: string; word: string; tone?: string }) {
   return (
@@ -107,6 +121,13 @@ function Overview() {
           </ol>
         </>
       )}
+      <WorldButton />
+      <div className="section-label">Warnings</div>
+      <Warnings />
+      <div className="section-label">Ocean-wide hotspot chance</div>
+      <OceanTrend />
+      <div className="section-label">Winners & losers, 2020 → 2050 (points)</div>
+      <ChangeBars />
       <button className="btn primary wide" onClick={() => void agent.ask("Where are the krill hotspots right now?")}>
         Ask Pip where the krill are
       </button>
@@ -153,6 +174,16 @@ function Detail({ region }: { region: Region }) {
           <RegionChart region={region} marks={[]} />
         </>
       )}
+
+      <dl className="facts">
+        <div><dt>Net hauls behind this</dt><dd>{point.n_hauls}</dd></div>
+        <div><dt>Since 1990</dt><dd>{(() => { const a = pointFor(region, 1990, scenario); const v = a ? Math.round((point.hotspot - a.hotspot) * 100) : 0; return `${v > 0 ? "+" : ""}${v} pts`; })()}</dd></div>
+        <div><dt>2050, middle-road</dt><dd>{formatPct(pointFor(region, 2050, "ssp245")?.hotspot ?? 0)}</dd></div>
+        <div><dt>2050, high-emissions</dt><dd>{formatPct(pointFor(region, 2050, "ssp585")?.hotspot ?? 0)}</dd></div>
+      </dl>
+      {point.n_hauls < 150 && <p className="note warn">⚠ Thin data: fewer than 150 net hauls here.</p>}
+      {point.uncertainty >= 0.3 && <p className="note warn">⚠ The model is very unsure about this year.</p>}
+      <WorldButton />
 
       <p className="lede">{region.summary}</p>
       <p className="ecology">{region.ecology}</p>
