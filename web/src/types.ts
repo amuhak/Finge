@@ -66,8 +66,11 @@ export function formatPct(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+/** One cutoff for the dashed map ring and the words in the panel. */
+export const HIGH_UNCERTAINTY = 0.3;
+
 export function confidenceLabel(uncertainty: number): string {
-  if (uncertainty <= 0.18) return "fairly tight";
-  if (uncertainty <= 0.3) return "wide";
+  if (uncertainty < 0.18) return "fairly tight";
+  if (uncertainty < HIGH_UNCERTAINTY) return "wide";
   return "very wide";
 }

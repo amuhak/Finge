@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import landTopo from "world-atlas/land-110m.json";
 import { useStore } from "../store";
-import { pointFor, type Region } from "../types";
+import { HIGH_UNCERTAINTY, pointFor, type Region } from "../types";
 
 const W = 1000;
 const H = 500;
@@ -101,6 +101,16 @@ export function WorldMap() {
   const zoom = Math.pow(width / W, 1);
   const zoomed = width < 620;
 
+  const ranked = useMemo(
+    () =>
+      [...regions]
+        .map((region) => ({ id: region.id, hotspot: pointFor(region, year, scenario)?.hotspot ?? 0 }))
+        .sort((a, b) => b.hotspot - a.hotspot)
+        .slice(0, 3)
+        .map((row) => row.id),
+    [regions, year, scenario],
+  );
+
   return (
     <svg
       className="worldmap"
@@ -109,7 +119,17 @@ export function WorldMap() {
       role="img"
       aria-label="Map of the Southern Ocean with krill density by region"
     >
-      <rect x={0} y={0} width={W} height={H} className="ocean" />
+      <rect
+        x={0}
+        y={0}
+        width={W}
+        height={H}
+        className="ocean"
+        onClick={() => {
+          select(null);
+          focusOn(null);
+        }}
+      />
       <path d={GRATICULE} className="graticule" />
       <path d={LAND} className="land" />
 
@@ -121,12 +141,14 @@ export function WorldMap() {
         const uncertainty = point?.uncertainty ?? 0.5;
         const radius = (3.6 + 8.4 * density) * zoom;
         const isSelected = selected === region.id;
+        const rank = ranked.indexOf(region.id);
 
         return (
           <g
             key={region.id}
             className={`region ${isSelected ? "is-selected" : ""}`}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               select(region.id);
               focusOn(region.id);
             }}
@@ -145,7 +167,7 @@ export function WorldMap() {
             </title>
             <circle cx={cx} cy={cy} r={Math.max(10, radius + 8)} fill="transparent" />
             {region.mpa && <circle cx={cx} cy={cy} r={radius + 3.4 * zoom} className="mpa-ring" />}
-            {uncertainty > 0.29 && (
+            {uncertainty >= HIGH_UNCERTAINTY && (
               <circle cx={cx} cy={cy} r={radius + 5.4 * zoom} className="uncertain-ring" />
             )}
             <circle
@@ -157,6 +179,14 @@ export function WorldMap() {
               vectorEffect="non-scaling-stroke"
             />
             {isSelected && <circle cx={cx} cy={cy} r={radius + 6.5 * zoom} className="selected-ring" />}
+            {!zoomed && rank >= 0 && (
+              <g className="rank-badge" aria-hidden="true">
+                <circle cx={cx} cy={cy - radius - 9} r={6.5} />
+                <text x={cx} y={cy - radius - 5.8} textAnchor="middle" fontSize={9}>
+                  {rank + 1}
+                </text>
+              </g>
+            )}
             {zoomed && (
               <text x={cx} y={cy - radius - 7 * zoom} className="region-label" fontSize={12.5 * zoom}>
                 {region.name}

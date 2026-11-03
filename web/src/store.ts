@@ -21,6 +21,8 @@ type Store = {
   voiceOpen: boolean;
   voiceStatus: VoiceStatus;
   voiceError: string | null;
+  /** Set when the session opened but the microphone was denied or missing. */
+  voiceMicError: string | null;
   voiceLog: VoiceLine[];
 
   load: (source: "auto" | "sample") => Promise<void>;
@@ -53,6 +55,7 @@ export const useStore = create<Store>((set, get) => ({
   voiceOpen: false,
   voiceStatus: "off",
   voiceError: null,
+  voiceMicError: null,
   voiceLog: [],
 
   load: async (source) => {

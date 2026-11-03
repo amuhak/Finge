@@ -18,12 +18,16 @@ export function Timeline() {
           </button>
         ))}
       </div>
-      <div className={`scenarios ${future ? "" : "muted"}`}>
+      <div
+        className={`scenarios ${future ? "" : "muted"}`}
+        title={future ? "Projection scenario" : "Scenarios apply to 2035 and 2050 only"}
+      >
         <span className="section-label">Scenario</span>
         <button
           className={`chip ${scenario === "ssp245" && future ? "on" : ""}`}
           disabled={!future}
           onClick={() => setScenario("ssp245")}
+          title={future ? "Projection under SSP2-4.5" : "Scenarios only apply to 2035 and 2050"}
         >
           SSP2-4.5
         </button>
@@ -31,10 +35,13 @@ export function Timeline() {
           className={`chip ${scenario === "ssp585" && future ? "on" : ""}`}
           disabled={!future}
           onClick={() => setScenario("ssp585")}
+          title={future ? "Projection under SSP5-8.5" : "Scenarios only apply to 2035 and 2050"}
         >
           SSP5-8.5
         </button>
-        <span className="timeline-note">{future ? "scenario, not a forecast" : "observed-era years"}</span>
+        <span className="timeline-note" title="Scenarios apply to 2035 and 2050 only">
+          {future ? "scenario, not a forecast" : "scenarios apply to 2035–2050"}
+        </span>
       </div>
     </div>
   );

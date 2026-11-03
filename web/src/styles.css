@@ -541,6 +541,28 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.spark-value {
+  fill: var(--accent);
+  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.rank-badge circle {
+  fill: var(--accent);
+  stroke: #071320;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.rank-badge text {
+  fill: #08131f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .hotlist {
   list-style: none;
   margin: 0;
@@ -552,8 +574,9 @@ code {
 .hotrow {
   width: 100%;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding: 9px 10px;
   border-radius: 9px;
   border: 1px solid var(--line-soft);
@@ -570,7 +593,37 @@ code {
   background: #16324a;
 }
 
+.hotname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranknum {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.hotunc {
+  flex: 0 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.hotunc.high {
+  color: #f3d79b;
+}
+
 .hotval {
+  flex: 0 0 auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--accent);
 }
@@ -739,7 +792,7 @@ code {
 }
 
 /* ---------- voice ---------- */
-.voice {
+.voice-panel {
   position: fixed;
   right: 20px;
   bottom: 20px;
@@ -756,7 +809,7 @@ code {
   overflow: hidden;
 }
 
-.voice.error {
+.voice-panel.error {
   border-color: rgba(239, 122, 109, 0.5);
 }
 
@@ -835,6 +888,11 @@ code {
   line-height: 1.4;
   color: #ffb2a9;
   background: rgba(239, 122, 109, 0.08);
+}
+
+.voice-hint.warn {
+  color: #f3d79b;
+  background: rgba(255, 209, 102, 0.07);
 }
 
 .voice-log {
@@ -937,5 +995,18 @@ code {
   .years {
     overflow-x: auto;
     max-width: 100%;
+  }
+
+  /* Phones: the voice panel becomes a bottom sheet instead of a floating card. */
+  .voice-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 68vh;
+    border-radius: 18px 18px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
   }
 }

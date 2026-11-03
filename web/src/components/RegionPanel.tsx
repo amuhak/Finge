@@ -1,6 +1,6 @@
 import { agent } from "../voice/agent";
 import { useStore } from "../store";
-import { confidenceLabel, formatPct, pointFor, seriesFor, type Region } from "../types";
+import { HIGH_UNCERTAINTY, confidenceLabel, formatPct, pointFor, seriesFor, type Region } from "../types";
 
 function Spark({ region }: { region: Region }) {
   const year = useStore((s) => s.year);
@@ -21,7 +21,17 @@ function Spark({ region }: { region: Region }) {
       <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} className="spark-axis" />
       <path d={line} className="spark-line" />
       {current && (
-        <circle cx={x(current.year)} cy={y(current.density)} r={3} className="spark-dot" />
+        <>
+          <circle cx={x(current.year)} cy={y(current.density)} r={3} className="spark-dot" />
+          <text
+            x={x(current.year) + (x(current.year) > w - 44 ? -6 : 6)}
+            y={Math.max(10, y(current.density) - 4)}
+            textAnchor={x(current.year) > w - 44 ? "end" : "start"}
+            className="spark-value"
+          >
+            {formatPct(current.density)}
+          </text>
+        </>
       )}
       <text x={pad} y={h - 14} className="spark-text">
         {minYear}
@@ -70,7 +80,7 @@ function Overview() {
       </p>
       <div className="section-label">Top hotspots · {year}</div>
       <ol className="hotlist">
-        {top.map(({ region, point }) => (
+        {top.map(({ region, point }, index) => (
           <li key={region.id}>
             <button
               className="hotrow"
@@ -79,7 +89,14 @@ function Overview() {
                 focusOn(region.id);
               }}
             >
+              <span className="ranknum">{index + 1}</span>
               <span className="hotname">{region.name}</span>
+              <span
+                className={`hotunc ${point && point.uncertainty >= HIGH_UNCERTAINTY ? "high" : ""}`}
+                title="Model uncertainty — higher is wider"
+              >
+                unc {formatPct(point?.uncertainty ?? 0)}
+              </span>
               <span className="hotval">{formatPct(point?.hotspot ?? 0)}</span>
             </button>
           </li>
@@ -91,8 +108,12 @@ function Overview() {
           <span>{caveat}</span>
         </div>
       )}
-      <button className="btn primary wide" onClick={() => void agent.start()}>
-        Ask Pip what this means
+      <button
+        className="btn primary wide"
+        onClick={() => void agent.start()}
+        title="Starts Pip and asks for microphone access"
+      >
+        Ask Pip what this means (mic)
       </button>
     </div>
   );
@@ -148,8 +169,9 @@ export function RegionPanel() {
       <button
         className="btn primary wide"
         onClick={() => void agent.ask(`What does this mean for ${region.name} and the fish that live there?`)}
+        title="Opens Pip and uses your microphone; the text box works without one"
       >
-        What does this mean?
+        What does this mean? (mic)
       </button>
       <p className="hint">Pip answers from the loaded data and says when it is guessing.</p>
 

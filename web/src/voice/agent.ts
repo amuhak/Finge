@@ -277,13 +277,15 @@ class FishAgent {
   private responding = false;
   private ending = 0;
   private spokeSinceEnd = false;
-  private pendingText: string | null = null;
+  private pendingTexts: string[] = [];
+  private opened = false;
   private gen = 0;
 
   async start() {
     const set = useStore.setState;
     const gen = ++this.gen;
-    set({ voiceOpen: true, voiceStatus: "connecting", voiceError: null });
+    this.opened = false;
+    set({ voiceOpen: true, voiceStatus: "connecting", voiceError: null, voiceMicError: null });
     try {
       const cfg = await fetchConfig();
       const grok = cfg.voice_providers.grok;
@@ -293,16 +295,6 @@ class FishAgent {
       const ctx = new AudioContext();
       this.ctx = ctx;
       await ctx.audioWorklet.addModule("/pcm-worklet.js");
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      if (gen !== this.gen) return this.teardown();
-
-      const mic = ctx.createMediaStreamSource(this.stream);
-      const capture = new AudioWorkletNode(ctx, "pcm-capture");
-      const mute = ctx.createGain();
-      mute.gain.value = 0;
-      mic.connect(capture).connect(mute).connect(ctx.destination);
       this.analyser = ctx.createAnalyser();
       this.analyser.fftSize = 256;
       this.analyser.connect(ctx.destination);
@@ -314,18 +306,34 @@ class FishAgent {
         this.handlers(gen),
       );
       if (gen !== this.gen) return transport.close();
+      this.opened = true;
 
       set({ voiceStatus: "listening" });
-      capture.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; level: number }>) => {
-        levels.mic = event.data.level;
-        if (this.transport === transport) transport.audio(b64(event.data.pcm));
-      };
-
-      const pending = this.pendingText;
-      this.pendingText = null;
-      const opener = pending ?? "Hi Pip.";
+      const opener = this.pendingTexts.shift() ?? "Hi Pip.";
       logVoice("user", opener);
       transport.text(opener);
+
+      // The microphone is optional: a denied prompt or no device still leaves a
+      // live session, so typed questions keep working.
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+        if (gen !== this.gen) return this.teardown();
+        const mic = ctx.createMediaStreamSource(this.stream);
+        const capture = new AudioWorkletNode(ctx, "pcm-capture");
+        const mute = ctx.createGain();
+        mute.gain.value = 0;
+        mic.connect(capture).connect(mute).connect(ctx.destination);
+        capture.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; level: number }>) => {
+          levels.mic = event.data.level;
+          if (this.transport === transport) transport.audio(b64(event.data.pcm));
+        };
+      } catch {
+        if (gen !== this.gen) return;
+        set({ voiceMicError: "Microphone unavailable — type to Pip below." });
+        logVoice("sys", "Microphone unavailable; typed messages still work.");
+      }
     } catch (error) {
       if (gen !== this.gen) return;
       set({ voiceStatus: "error", voiceError: error instanceof Error ? error.message : String(error) });
@@ -337,43 +345,25 @@ class FishAgent {
     this.gen++;
     clearTimeout(this.ending);
     this.ending = 0;
-    this.pendingText = null;
+    this.pendingTexts = [];
     this.transport?.close();
     this.teardown();
-    useStore.setState({ voiceStatus: "off", voiceOpen: false });
+    useStore.setState({ voiceStatus: "off", voiceOpen: false, voiceMicError: null });
   }
 
   /** Type instead of talking — also how the region panel asks about a place. */
   ask(text: string) {
     const clean = text.trim();
     if (!clean) return;
-    if (this.transport) {
+    if (this.transport && this.opened) {
       logVoice("user", clean);
       this.stopPlayback();
       this.transport.text(clean);
       return;
     }
-    this.pendingText = clean;
-    if (!useStore.getState().voiceOpen) {
-      void this.start();
-      return;
-    }
-    // A session is already connecting: send as soon as it opens. start() may
-    // consume pendingText first, in which case this becomes a no-op.
-    let attempts = 0;
-    const flush = () => {
-      if (this.transport) {
-        const pending = this.pendingText;
-        this.pendingText = null;
-        if (pending) {
-          logVoice("user", pending);
-          this.transport.text(pending);
-        }
-        return;
-      }
-      if (useStore.getState().voiceOpen && attempts++ < 40) window.setTimeout(flush, 300);
-    };
-    window.setTimeout(flush, 300);
+    this.pendingTexts.push(clean);
+    const state = useStore.getState();
+    if (!state.voiceOpen || state.voiceStatus === "error") void this.start();
   }
 
   sendText(text: string) {
@@ -387,6 +377,15 @@ class FishAgent {
     let sum = 0;
     for (const value of data) sum += ((value - 128) / 128) ** 2;
     return Math.sqrt(sum / data.length);
+  }
+
+  /** Ask queued questions one at a time, once the previous answer is quiet. */
+  private flushQueue() {
+    if (!this.transport || !this.opened || this.responding || this.sources.length || !this.pendingTexts.length) return;
+    const next = this.pendingTexts.shift();
+    if (!next) return;
+    logVoice("user", next);
+    this.transport.text(next);
   }
 
   private handlers(gen: number): Handlers {
@@ -447,6 +446,7 @@ class FishAgent {
           return;
         }
         if (!this.sources.length) set({ voiceStatus: "listening" });
+        this.flushQueue();
       },
       closed: (reason) => {
         if (!live()) return;
@@ -467,6 +467,7 @@ class FishAgent {
     this.analyser = null;
     this.sources = [];
     this.transport = null;
+    this.opened = false;
     this.responding = false;
     this.spokeSinceEnd = false;
     clearTimeout(this.ending);
@@ -497,7 +498,10 @@ class FishAgent {
     useStore.setState({ voiceStatus: "speaking" });
     source.onended = () => {
       this.sources = this.sources.filter((item) => item !== source);
-      if (!this.sources.length && !this.responding) useStore.setState({ voiceStatus: "listening" });
+      if (!this.sources.length && !this.responding) {
+        useStore.setState({ voiceStatus: "listening" });
+        this.flushQueue();
+      }
     };
   }
 

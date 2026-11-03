@@ -37,6 +37,16 @@ export default function App() {
     void load("auto");
   }, [load]);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      select(null);
+      focusOn(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [select, focusOn]);
+
   const empty = dataset.regions.length === 0;
   const sample = dataset.sample;
 
@@ -66,9 +76,11 @@ export default function App() {
           <button
             className={`btn voice ${voiceOpen ? "on" : ""}`}
             onClick={() => (voiceOpen ? agent.stop() : void agent.start())}
+            title={voiceOpen ? "End the voice session" : "Starts Pip and asks for microphone access"}
+            aria-pressed={voiceOpen}
           >
             <span className={`dot ${voiceStatus}`} />
-            {voiceOpen ? "End Pip" : "Ask Pip"}
+            {voiceOpen ? "End Pip" : "Ask Pip (mic)"}
           </button>
         </div>
       </header>
