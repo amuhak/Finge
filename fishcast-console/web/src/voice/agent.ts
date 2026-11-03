@@ -337,6 +337,7 @@ class FishAgent {
     this.gen++;
     clearTimeout(this.ending);
     this.ending = 0;
+    this.pendingText = null;
     this.transport?.close();
     this.teardown();
     useStore.setState({ voiceStatus: "off", voiceOpen: false });
@@ -353,7 +354,26 @@ class FishAgent {
       return;
     }
     this.pendingText = clean;
-    if (!useStore.getState().voiceOpen) void this.start();
+    if (!useStore.getState().voiceOpen) {
+      void this.start();
+      return;
+    }
+    // A session is already connecting: send as soon as it opens. start() may
+    // consume pendingText first, in which case this becomes a no-op.
+    let attempts = 0;
+    const flush = () => {
+      if (this.transport) {
+        const pending = this.pendingText;
+        this.pendingText = null;
+        if (pending) {
+          logVoice("user", pending);
+          this.transport.text(pending);
+        }
+        return;
+      }
+      if (useStore.getState().voiceOpen && attempts++ < 40) window.setTimeout(flush, 300);
+    };
+    window.setTimeout(flush, 300);
   }
 
   sendText(text: string) {
