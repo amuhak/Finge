@@ -1,7 +1,7 @@
 """FishCast console backend.
 
-Serves the built web UI, a synthetic-or-real krill dataset, and short-lived xAI
-realtime tokens so the browser's voice agent never sees the API key.
+Serves the built web UI, a synthetic-or-real krill dataset, a read-only bot API,
+and short-lived xAI realtime tokens so the browser's voice agent never sees the API key.
 
     python server/app.py                 # real data if present, else the "turn on sample data" prompt
     python server/app.py --sample        # start with synthetic sample data already loaded
@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -71,6 +72,28 @@ def post_json(url: str, payload: dict, headers: dict, timeout: float = 10.0) -> 
         return json.loads(response.read().decode("utf-8"))
 
 
+def load_dataset(source: str = "auto") -> dict:
+    """The dataset the console would show: real file, sample, or empty."""
+    if source == "none":
+        return dict(EMPTY_DATASET)
+    if source == "sample":
+        return build_dataset()
+    if REAL_PATH.exists():
+        try:
+            raw = REAL_PATH.read_text(encoding="utf-8")
+            parsed = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise HTTPException(500, f"data/dataset.json is not valid JSON: {exc}") from exc
+        if not isinstance(parsed, dict) or not isinstance(parsed.get("regions"), list):
+            raise HTTPException(500, "data/dataset.json must be an object with a 'regions' list")
+        parsed.setdefault("source", "real")
+        parsed.setdefault("sample", False)
+        return parsed
+    if sample_enabled():
+        return build_dataset()
+    return dict(EMPTY_DATASET)
+
+
 app = FastAPI(title="FishCast console", version="0.1.0")
 load_env()
 
@@ -95,24 +118,7 @@ def config() -> dict:
 @app.get("/api/dataset")
 def dataset(source: str = Query("auto", pattern="^(auto|sample|none)$")) -> dict:
     """`auto` = real file if present, else sample if enabled, else empty."""
-    if source == "none":
-        return dict(EMPTY_DATASET)
-    if source == "sample":
-        return build_dataset()
-    if REAL_PATH.exists():
-        try:
-            raw = REAL_PATH.read_text(encoding="utf-8")
-            parsed = json.loads(raw)
-        except (OSError, json.JSONDecodeError) as exc:
-            raise HTTPException(500, f"data/dataset.json is not valid JSON: {exc}") from exc
-        if not isinstance(parsed, dict) or not isinstance(parsed.get("regions"), list):
-            raise HTTPException(500, "data/dataset.json must be an object with a 'regions' list")
-        parsed.setdefault("source", "real")
-        parsed.setdefault("sample", False)
-        return parsed
-    if sample_enabled():
-        return build_dataset()
-    return dict(EMPTY_DATASET)
+    return load_dataset(source)
 
 
 @app.post("/api/voice/token")
@@ -132,6 +138,222 @@ def voice_token() -> dict:
         raise HTTPException(502, f"xAI refused the token request: {exc.code} {detail}") from exc
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise HTTPException(502, f"Could not reach xAI: {exc}") from exc
+
+
+BOT_FIELDS = {
+    "density": "Relative krill density index, 0-1. Not biomass.",
+    "density_pct": "density * 100, for readable answers.",
+    "hotspot": "Probability the region is a krill hotspot, 0-1.",
+    "hotspot_pct": "hotspot * 100, in percentage points.",
+    "uncertainty": "Model uncertainty, 0-1. Higher means less sure.",
+    "uncertainty_words": "fairly tight (<0.18), wide (0.18-0.3), very wide (>=0.3).",
+    "n_hauls": "Net hauls behind the region. Under 150 is thin data.",
+}
+
+
+def bot_context(data: dict) -> dict:
+    meta = data.get("meta") or {}
+    return {
+        "source": data.get("source"),
+        "sample": bool(data.get("sample")),
+        "caveat": meta.get("caveat"),
+        "generated_at": meta.get("generated_at"),
+    }
+
+
+def dataset_years(data: dict) -> list[int]:
+    meta = data.get("meta") or {}
+    years = {int(year) for year in (meta.get("years") or []) if isinstance(year, (int, float))}
+    if not years:
+        for region in data.get("regions") or []:
+            for point in region.get("series") or []:
+                year = point.get("year")
+                if isinstance(year, (int, float)):
+                    years.add(int(year))
+    return sorted(years)
+
+
+def choose_year(data: dict, year: int | None) -> int | None:
+    years = dataset_years(data)
+    if not years:
+        return None
+    if year is None:
+        return 2020 if 2020 in years else years[0]
+    return min(years, key=lambda candidate: abs(candidate - year))
+
+
+def choose_scenario(year: int, scenario: str) -> str:
+    if year <= 2020:
+        return "historical"
+    return scenario if scenario in {"ssp245", "ssp585"} else "ssp245"
+
+
+def point_at(region: dict, year: int, scenario: str) -> dict | None:
+    series = [point for point in (region.get("series") or []) if isinstance(point, dict)]
+    exact = next((point for point in series if point.get("year") == year and point.get("scenario") == scenario), None)
+    if exact is not None:
+        return exact
+    candidates = [point for point in series if point.get("scenario") == scenario] or series
+    if not candidates:
+        return None
+    return min(
+        candidates,
+        key=lambda point: abs(int(point["year"]) - year) if isinstance(point.get("year"), (int, float)) else 10**9,
+    )
+
+
+def as_pct(value: object) -> float | None:
+    return round(value * 100, 1) if isinstance(value, (int, float)) else None
+
+
+def uncertainty_words(value: object) -> str | None:
+    if not isinstance(value, (int, float)):
+        return None
+    if value < 0.18:
+        return "fairly tight"
+    if value < 0.3:
+        return "wide"
+    return "very wide"
+
+
+def bot_point(region: dict, point: dict | None) -> dict:
+    density = point.get("density") if point else None
+    hotspot = point.get("hotspot") if point else None
+    uncertainty = point.get("uncertainty") if point else None
+    hauls = point.get("n_hauls") if point else None
+    return {
+        "id": region.get("id"),
+        "name": region.get("name"),
+        "lat": region.get("lat"),
+        "lon": region.get("lon"),
+        "mpa": bool(region.get("mpa")),
+        "mpa_name": region.get("mpa_name"),
+        "density": density,
+        "density_pct": as_pct(density),
+        "hotspot": hotspot,
+        "hotspot_pct": as_pct(hotspot),
+        "uncertainty": uncertainty,
+        "uncertainty_words": uncertainty_words(uncertainty),
+        "n_hauls": hauls,
+        "thin_data": hauls < 150 if isinstance(hauls, (int, float)) else None,
+    }
+
+
+def find_region(data: dict, ref: str) -> dict | None:
+    def normalize(value: object) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", str(value).lower()).strip()
+
+    wanted = normalize(ref)
+    regions = data.get("regions") or []
+    for region in regions:
+        if normalize(region.get("id")) == wanted or normalize(region.get("name")) == wanted:
+            return region
+    for region in regions:
+        name = normalize(region.get("name"))
+        if wanted and (wanted in name or name in wanted):
+            return region
+    return None
+
+
+@app.get("/api/bot/overview")
+def bot_overview() -> dict:
+    """Start here: dataset context, region roster, and links to the other bot endpoints."""
+    data = load_dataset("auto")
+    meta = data.get("meta") or {}
+    regions = data.get("regions") or []
+    return {
+        "service": "FishCast",
+        "description": "Southern Ocean krill hotspot demo, 1990-2050. Read-only data for the Grok Bot.",
+        **bot_context(data),
+        "loaded": bool(regions),
+        "years": dataset_years(data),
+        "scenarios": meta.get("scenarios") or [],
+        "fields": BOT_FIELDS,
+        "region_count": len(regions),
+        "regions": [
+            {
+                "id": region.get("id"),
+                "name": region.get("name"),
+                "lat": region.get("lat"),
+                "lon": region.get("lon"),
+                "mpa": bool(region.get("mpa")),
+                "mpa_name": region.get("mpa_name"),
+                "summary": region.get("summary"),
+            }
+            for region in regions
+        ],
+        "endpoints": {
+            "hotspots": "/api/bot/hotspots?year=2050&scenario=ssp585&limit=6",
+            "region": "/api/bot/region/{region_id}",
+        },
+        "message": None
+        if regions
+        else "No dataset is loaded. Start the server with --sample or add data/dataset.json.",
+    }
+
+
+@app.get("/api/bot/hotspots")
+def bot_hotspots(
+    year: int | None = Query(None, description="Nearest available year. Defaults to 2020."),
+    scenario: str = Query("ssp245", pattern="^(ssp245|ssp585)$"),
+    limit: int = Query(6, ge=1, le=50),
+) -> dict:
+    """Rank regions by hotspot probability for a year and scenario."""
+    data = load_dataset("auto")
+    regions = data.get("regions") or []
+    chosen_year = choose_year(data, year)
+    if not regions or chosen_year is None:
+        return {
+            **bot_context(data),
+            "year": chosen_year,
+            "scenario": None,
+            "count": 0,
+            "hotspots": [],
+            "message": "No dataset is loaded. Start the server with --sample or add data/dataset.json.",
+        }
+    chosen_scenario = choose_scenario(chosen_year, scenario)
+    rows = []
+    for region in regions:
+        point = point_at(region, chosen_year, chosen_scenario)
+        if point is not None:
+            rows.append(bot_point(region, point))
+    rows.sort(key=lambda row: row["hotspot"] if row["hotspot"] is not None else -1, reverse=True)
+    ranked = [{**row, "rank": index} for index, row in enumerate(rows[:limit], start=1)]
+    return {
+        **bot_context(data),
+        "year": chosen_year,
+        "scenario": chosen_scenario,
+        "count": len(ranked),
+        "hotspots": ranked,
+        "message": None,
+    }
+
+
+@app.get("/api/bot/region/{region_id}")
+def bot_region(region_id: str) -> dict:
+    """Full details and series for one region. Accepts a region id or name."""
+    data = load_dataset("auto")
+    region = find_region(data, region_id)
+    if region is None:
+        known = ", ".join(str(item.get("id")) for item in (data.get("regions") or []))
+        raise HTTPException(404, f"No region '{region_id}'. Known ids: {known}")
+    meta = data.get("meta") or {}
+    return {
+        **bot_context(data),
+        "years": dataset_years(data),
+        "scenarios": meta.get("scenarios") or [],
+        "region": {
+            "id": region.get("id"),
+            "name": region.get("name"),
+            "lat": region.get("lat"),
+            "lon": region.get("lon"),
+            "mpa": bool(region.get("mpa")),
+            "mpa_name": region.get("mpa_name"),
+            "summary": region.get("summary"),
+            "ecology": region.get("ecology"),
+            "series": region.get("series") or [],
+        },
+    }
 
 
 if DIST.exists():

@@ -95,6 +95,12 @@ point of voice here.
 Voice needs Chrome, a microphone, `XAI_API_KEY` in `.env`, and a network. If the mic fails, the
 text box in the voice panel uses the same session.
 
+## Grok Bot
+
+`GROK_BOT.md` has a copy-paste prompt for a Grok Bot teammate and the read-only `/api/bot`
+endpoints it uses to read the data. Start the server with `--sample` so the bot and the console see
+the same dataset.
+
 ## Layout
 
 ```
