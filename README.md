@@ -10,6 +10,11 @@ The app lives at the repository root. `fish-cast/` and `hackgt-26/` are referenc
 left untouched and untracked; this borrows the Grok transport from the latter and the domain
 from the former.
 
+> **What this is not.** The sample numbers are fabricated for the demo. FishCast's own
+> benchmark finds no climate-only skill against a constant baseline, and all runs before
+> 27 September 2026 are invalid. Nothing here is a forecast, a stock assessment or management
+> advice. Pip is a character reading the loaded data — a voice does not make the model better.
+
 ## Quick start
 
 ```bash
@@ -97,10 +102,21 @@ text box in the voice panel uses the same session.
 
 ## The honest part
 
-FishCast's own benchmark says its climate-only models show **no skill** against a constant
-baseline; only catch-history models beat it, by about 5%. So the UI never presents 2035/2050 as a
-forecast, and Pip is instructed to say so rather than invent certainty. The sample numbers are
-fabricated to make the interface explorable — not a result.
+- FishCast's own benchmark says its climate-only models show **no skill** against a constant
+  baseline. Only catch-history models beat it, by about 5%, and the repo marks every run before
+  27 September 2026 invalid. The interface does not hide this.
+- **The sample data is made up** (`server/sample_data.py`) so the map and the voice have something
+  to talk about. It is deterministic and plausible, not fitted, and no number from it should be
+  quoted as a finding.
+- 2035 and 2050 are labelled **scenarios**, not predictions, in the UI, the README and Pip's
+  instructions. Uncertainty grows with projection distance and is shown, not smoothed away.
+- **Pip is a character, not a scientist.** It can describe general food-web dependencies and read
+  the loaded numbers, but it has no source of truth beyond this dataset and is told not to invent
+  population sizes, dates or percentages. The mackerel icefish persona is a storytelling device.
+- The model itself is not running in this app. There is no checkpoint here and no live inference:
+  a real deployment would need `fish-cast`'s checkpoint plus its own honest benchmark run first.
+- No part of this is management advice for CCAMLR, and no MPA boundary here is authoritative; the
+  MPA flags are labels on 14 hand-placed regions, not legal geography.
 
 ## Layout
 
